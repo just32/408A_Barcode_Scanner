@@ -1,0 +1,7 @@
+18:42:23 **** Clean-only build of configuration Debug for project ScannerCode ****
+make clean 
+rm -rf *
+ 
+
+18:42:24 Build Finished (took 90ms)
+
