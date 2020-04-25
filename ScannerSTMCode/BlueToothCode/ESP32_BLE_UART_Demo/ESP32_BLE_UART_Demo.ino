@@ -82,7 +82,6 @@ void setup() {
 
   // Create the BLE Device
   BLEDevice::init("ESP32 UART Test"); // Give it a name
-
   // Create the BLE Server
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());

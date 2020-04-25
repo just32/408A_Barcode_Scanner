@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import CoreBluetooth
 
 class ViewController: UIViewController {
     
@@ -17,8 +18,10 @@ class ViewController: UIViewController {
     @IBOutlet weak var codeBox: UITextField!
     @IBOutlet weak var imageBox: UIImageView!
     
+    private var centralManager = BluetoothControl()
+    
     var currentCode = "748927021356"
-    let currentKey = "tvt9qkfa5i9vgigiq46qzy79dx6mu2"
+    let currentKey = "ojddvonn6gqxx8r60g6263p36ax6pi"
     
     var productImages = [] as [String]
     var currentImage = 0
@@ -32,8 +35,18 @@ class ViewController: UIViewController {
         descriptionLabel.lineBreakMode = NSLineBreakMode.byWordWrapping
         //makeCall()
         // Do any additional setup after loading the view.
+        
+        //scan for bluetooth devices
+
+        //centralManager.scanForPeripherals(withServices: nil, options: nil)
+        
+        //centralManager.stopScan()
+        //currentCode = centralManager.getCurrentBarcode()
     }
     
+    @IBAction func exitKeyboard(_ sender: Any) {
+        self.view.endEditing(true)
+    }
     
     @IBAction func codeChanged(_ sender: Any) {
         currentCode = codeBox.text!
@@ -79,6 +92,11 @@ class ViewController: UIViewController {
         }
     }
     
+    
+    
+    
+    
+    
     func updateImage (url: URL) {
         DispatchQueue.global().async { [weak self] in
             if let data = try? Data(contentsOf: url) {
@@ -89,6 +107,10 @@ class ViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    func updateTitle (title: String) {
+        dataLabel.text = title
     }
     
     func updateLabel (text: String, desc: String, url: URL) {
@@ -132,6 +154,11 @@ class ViewController: UIViewController {
             return
           }
           // parse the result as JSON, since that's what the API provides
+            
+            //var d = Data.init()
+            //let t = "tt"
+            //d.append(t, count: 2)
+            //print(String(decoding: responseData, as: UTF8.self))
           do {
             guard let todo = try JSONSerialization.jsonObject(with: responseData, options: .allowFragments)
               as? [String: Any] else {
@@ -190,6 +217,165 @@ class ViewController: UIViewController {
     }
     
 
+    
+    private class BluetoothControl: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+        
+        var btDevice: CBPeripheral! = nil
+        var btServices: [CBService] = []
+        var btCharacteristics: [CBCharacteristic] = []
+        var centralManager: CBCentralManager!
+        var currentBarcode: String!
+
+        override init() {
+            super.init()
+
+            centralManager = CBCentralManager(delegate: self, queue: nil, options:nil)
+            currentBarcode = "0"
+        }
+        
+        func centralManagerDidUpdateState(_ central: CBCentralManager) {
+            print(central.state.rawValue)
+            switch (central.state) {
+            case CBManagerState.poweredOff:
+               print("CoreBluetooth BLE hardware is powered off")
+                break;
+            case CBManagerState.unauthorized:
+                print("CoreBluetooth BLE state is unauthorized")
+                break
+
+            case CBManagerState.unknown:
+                 print("CoreBluetooth BLE state is unknown");
+                break
+
+            case CBManagerState.poweredOn:
+                print("CoreBluetooth BLE hardware is powered on and ready")
+                scan()
+                break;
+
+            case CBManagerState.resetting:
+                 print("CoreBluetooth BLE hardware is resetting")
+                break;
+            case CBManagerState.unsupported:
+                  print("CoreBluetooth BLE hardware is unsupported on this platform");
+                break
+            @unknown default:
+                print("none of the above");
+            }
+        }
+        
+        func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+            //print("peripheral found!")
+            //print("name: \(peripheral.name ?? "none")")
+            //print("peripheral: \(peripheral)")
+            //print(advertisementData.count)
+            //print(advertisementData)
+            
+            //ESP32 UART Test
+            if(peripheral.identifier.uuidString == "1B1C6CFF-A0AD-9CF9-4EF7-6C486729C7C5") {
+                print("peripheral found!")
+                btDevice = peripheral
+                endScan()
+                centralManager.connect(btDevice, options: nil)
+            }
+        }
+        
+        // Called when it succeeded
+        func centralManager(_ central: CBCentralManager,
+        didConnect peripheral: CBPeripheral)
+        {
+            print("connected!")
+            print(peripheral)
+            
+            btDevice.delegate = self
+            btDevice.discoverServices(nil)
+            
+        }
+        
+        // Called when it failed
+        func centralManager(_ central: CBCentralManager,
+        didFailToConnect peripheral: CBPeripheral,
+                   error: Error?)
+        {
+            print("failed…")
+        }
+        
+        func scan() {
+            print("Scanning for peripherals...");
+            //let uuid = CBUUID(string: "1B1C6CFF-A0AD-9CF9-4EF7-6C486729C7C5")
+            centralManager.scanForPeripherals(withServices: nil, options: nil)
+        }
+        
+        func endScan() {
+            print("Ending scan...")
+            centralManager.stopScan()
+        }
+        
+        //when services are found
+        func peripheral(_ peripheral: CBPeripheral,
+        didDiscoverServices error: Error?)
+        {
+            if error != nil {
+                print("error: \(String(describing: error))")
+                return
+            }
+            let services = peripheral.services
+            print("Found \(services!.count) services! :\(services?.description ?? "none")")
+            
+            btServices = services!
+            for serv in btServices {
+                btDevice.discoverCharacteristics(nil, for: serv)
+            }
+        }
+        
+        //when characteristics are recieved
+        func peripheral(_ peripheral: CBPeripheral,
+        didDiscoverCharacteristicsFor service: CBService,
+                           error: Error?)
+        {
+            if let error = error {
+                print("error: \(error)")
+                return
+            }
+
+            let characteristics = service.characteristics
+            print("Found \(characteristics?.count ?? 0) characteristics!:\(characteristics?.description ?? "none")")
+            
+            
+            btCharacteristics = characteristics!
+            
+            for char in btCharacteristics {
+                btDevice.setNotifyValue(true, for: char)
+            }
+        }
+        
+        //called when characteristic value is updated
+        func peripheral(_ peripheral: CBPeripheral,
+        didUpdateValueFor characteristic: CBCharacteristic,
+                    error: Error?)
+        {
+            if let error = error {
+                print("Failed… error: \(error)")
+                return
+            }
+        
+            let data = characteristic.value! as NSData
+            
+            let val = String(data: data as Data, encoding: String.Encoding.utf8) ?? "Data could not be printed" //utf8.self?
+            
+            print("characteristic uuid: \(characteristic.uuid), value: \(val)")
+        }
+        
+        // begins getting services
+        func getServices() {
+            btDevice.delegate = self
+            btDevice.discoverServices(nil)
+        }
+        
+        public func getCurrentBarcode() -> String {
+            return currentBarcode
+        }
+        
+    }
     
     
     
