@@ -29,6 +29,8 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
+#include "ArduCAM.h"
+#include "scanner.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -37,12 +39,12 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-
+SPI_HandleTypeDef spi;
+I2C_HandleTypeDef hi2c1;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

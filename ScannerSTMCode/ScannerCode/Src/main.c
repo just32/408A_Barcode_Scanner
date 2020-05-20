@@ -42,7 +42,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
 
 LCD_HandleTypeDef hlcd;
@@ -68,7 +67,7 @@ static void MX_I2C2_Init(void);
 static void MX_LCD_Init(void);
 static void MX_QUADSPI_Init(void);
 static void MX_SAI1_Init(void);
-static void MX_SPI2_Init(void);
+static void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
 void MX_USB_HOST_Process(void);
 
@@ -115,7 +114,7 @@ int main(void)
   MX_LCD_Init();
   MX_QUADSPI_Init();
   MX_SAI1_Init();
-  MX_SPI2_Init();
+  MX_SPI1_Init();
   MX_USART2_UART_Init();
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 2 */
@@ -137,6 +136,34 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
   }
+
+	uint8_t vid, pid, temp ;
+	uint8_t sensor_addr;
+	NVIC_Configuration();
+	SystemInit();
+	delay_init();
+
+	ArduCAM_LED_init();
+	ArduCAM_CS_init();
+	sccb_bus_init();
+	SPI1_Init();
+	ArduCAM_Init();
+	char result[13];
+
+  while(1)
+  	{
+  		sensor_addr = 0x60;
+  		SSCB_wrSensorReg16_8(sensor_addr, 0xff, 0x01);
+  		SSCB_rdSensorReg16_8(sensor_addr, OV2640_CHIPID_HIGH, &vid);
+  		SSCB_rdSensorReg16_8(sensor_addr, OV2640_CHIPID_LOW, &pid);
+
+  		if ((vid != 0x26 ) && (( pid != 0x41 ) || ( pid != 0x42 )))
+  			printf("ACK CMD Can't find OV2640 module!\r\n");
+  	}
+
+  Arducam_Start_Capture_CMD();
+  HAL_Delay(100);
+  decodeImg(result);
   /* USER CODE END 3 */
 }
 
@@ -461,7 +488,7 @@ static void MX_SAI1_Init(void)
   * @param None
   * @retval None
   */
-static void MX_SPI2_Init(void)
+static void MX_SPI1_Init(void)
 {
 
   /* USER CODE BEGIN SPI2_Init 0 */

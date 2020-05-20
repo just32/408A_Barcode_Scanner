@@ -1,0 +1,33 @@
+/**
+ * @file ov2640.c
+ * @author murat.demirtas@doktar.com
+ */
+
+#include "ov2640.h"
+
+/**
+ * This function will test camera communication over sscb or I2C bus. Some
+ * cameras supporting I2C protocol.
+ * @param chip_id_high_addr Camera sensor chip id high(vid) addr
+ * @param chip_id_low_addr Camera sensor chip id low(pid) addr
+ * @return is test passed?
+ */
+bool Camera_Test_SSCB_Bus(uint16_t chip_id_high_addr, uint16_t chip_id_low_addr){
+	/* declaring test variables*/
+	uint8_t vid_val = 0, pid_val =0, test_pass = 0, test_fail = 0;
+	/* read test over sscb bus*/
+	for(uint8_t i = 0; i < 5; i++)
+	{
+		SSCB_rdSensorReg16_8(OV2640_CHIP_SSCB_BUS_ADDR_W, chip_id_high_addr, &vid_val);
+		SSCB_rdSensorReg16_8(OV2640_CHIP_SSCB_BUS_ADDR_W, chip_id_low_addr, &pid_val);
+		if ((vid_val != 0x56) || (pid_val != 0x42))
+			test_fail++;
+		else
+			test_pass++;
+	}
+	/*check counter for test*/
+	if(test_pass == 5){
+		return true;
+	}else
+		return false;
+}
